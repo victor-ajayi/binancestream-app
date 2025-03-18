@@ -1,0 +1,20 @@
+### Django ###
+app/.env
+.env
+.ruff_cache
+logs/
+schema.yml
+public
+__pycache__/
+
+### macOS ###
+.DS_Store
+.AppleDouble
+.LSOverride
+
+### PyCharm ###
+.idea
+
+
+### Postgres ###
+dbdata/

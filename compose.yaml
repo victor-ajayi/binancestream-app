@@ -1,0 +1,94 @@
+services:
+  app:
+    image: node:alpine
+    build:
+      context: app/
+    ports:
+      - 3000:3000
+    develop:
+      watch:
+        - action: sync
+          path: ./app
+          target: ./app
+          ignore:
+            - node_modules/
+        - action: rebuild
+          path: package.json
+
+  django-server:
+    build:
+      context: backend/
+    ports:
+      - 8000:8000
+    env_file:
+      - .env
+    develop:
+      watch:
+        - action: sync
+          path: ./backend
+          target: ./backend
+          ignore:
+            - .venv/
+        - action: rebuild
+          path: pyproject.toml
+    depends_on:
+      - db
+      - redis
+      - django-client
+
+  django-client:
+    build:
+      context: backend/
+    depends_on: 
+      - redis
+    env_file:
+      - .env
+    develop:
+      watch:
+        - action: rebuild
+          path: ./backend
+          target: ./backend
+    command: python manage.py client
+
+  celery:
+    container_name: celery
+    command: celery -A cleancar worker -l INFO
+    build: ./backend
+    env_file:
+      - .env
+    depends_on:
+      - django-server
+    develop:
+      watch:
+        - action: rebuild
+          path: ./backend
+          target: ./backend
+
+  db:
+    image: postgres
+    restart: always
+    user: postgres
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    expose:
+      - 5432
+    healthcheck:
+      test: [ "CMD", "pg_isready" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      
+  redis:
+    container_name: redis
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    command: ["sh", "-c", "redis-server && redis-cli FLUSHALL"]
+volumes:
+  db-data:
+
